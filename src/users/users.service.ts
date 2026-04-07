@@ -10,10 +10,16 @@ export class UsersService {
 		private usersRepository: Repository<User>,
 	) { }
 	async findByEmail(email: string): Promise<User | null> {
-		return this.usersRepository.findOne({ where: { email } });
+		return this.usersRepository.findOne({
+			where: { email },
+			select: ['id', 'email', 'password', 'username', 'twoFactorSecret', 'fortytwoId']
+		});
 	}
 	async createUser(username: string, email: string, password: string, twoFactorSecret?: string, fortytwoId?: string): Promise<User> {
 		const user = this.usersRepository.create({ username, email, password, twoFactorSecret, fortytwoId })
 		return this.usersRepository.save(user);
+	}
+	async findById(id: number): Promise<User | null> {
+		return this.usersRepository.findOne({ where: { id }});
 	}
 }
