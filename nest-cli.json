@@ -46,6 +46,15 @@
         "tsConfigPath": "apps/gateway/tsconfig.app.json"
       }
     },
+    "tournament": {
+      "type": "application",
+      "root": "apps/tournament",
+      "entryFile": "main",
+      "sourceRoot": "apps/tournament/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/tournament/tsconfig.app.json"
+      }
+    },
     "user": {
       "type": "application",
       "root": "apps/user",
