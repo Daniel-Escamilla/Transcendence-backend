@@ -1,24 +1,25 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
-import { GatewayModule } from './../src/gateway.module';
 
-describe('GatewayController (e2e)', () => {
-  let app: INestApplication;
+import { HealthController } from '../src/modules/health/health.controller';
+
+describe('Gateway HTTP (integration)', () => {
+  let moduleFixture: TestingModule;
 
   beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [GatewayModule],
-    }).compile();
+    process.env.NATS_SERVERS = process.env.NATS_SERVERS ?? 'nats://localhost:4222';
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
+    const { AppModule } = await import('../src/app.module');
+    moduleFixture = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+  it('resolves the health controller from the app module', () => {
+    const controller = moduleFixture.get(HealthController);
+
+    expect(controller.check()).toEqual({
+      status: 'ok',
+      service: 'gateway',
+    });
   });
 });
