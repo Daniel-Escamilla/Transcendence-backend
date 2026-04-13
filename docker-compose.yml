@@ -10,6 +10,11 @@ services:
     ports:
       - "5432:5432"
 
+  nats-server:
+    image: nats:2.10-alpine
+    ports:
+      - "4222:4222"
+
   gateway:
     build:
       context: .
@@ -17,11 +22,18 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
+      PORT: 3000
+      NATS_SERVERS: ${NATS_SERVERS:-nats://nats-server:4222}
+      REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS:-5000}
     ports:
-      - "3000:3000"
+      - "${GATEWAY_PORT:-3000}:3000"
     depends_on:
       - database
+      - nats-server
+      - auth
+      - user
+      - game
+      - tournament
 
   auth:
     build:
@@ -31,10 +43,12 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
-    ports:
-      - "3001:3001"
+      NATS_SERVERS: ${NATS_SERVERS:-nats://nats-server:4222}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
     depends_on:
       - database
+      - nats-server
 
   user:
     build:
@@ -44,12 +58,32 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
-    ports:
-      - "3002:3002"
+      NATS_SERVERS: ${NATS_SERVERS:-nats://nats-server:4222}
     depends_on:
       - database
+      - nats-server
 
-  # frontend:
+  game:
+    build:
+      context: .
+      dockerfile: apps/game/Dockerfile
+    env_file:
+      - .env
+    environment:
+      NATS_SERVERS: ${NATS_SERVERS:-nats://nats-server:4222}
+    depends_on:
+      - nats-server
+
+  tournament:
+    build:
+      context: .
+      dockerfile: apps/tournament/Dockerfile
+    env_file:
+      - .env
+    environment:
+      NATS_SERVERS: ${NATS_SERVERS:-nats://nats-server:4222}
+    depends_on:
+      - nats-server
 
 volumes:
   postgres_data:

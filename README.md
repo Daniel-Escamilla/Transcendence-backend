@@ -1,21 +1,20 @@
 # transcendence-backend
 
-Backend del proyecto ft_transcendence (42). Arquitectura de microservicios con NestJS, PostgreSQL y Docker.
+Backend monorepo de NestJS para `ft_transcendence`, organizado en `apps/*` y comunicado por NATS.
 
-## Requisitos previos
+## Arquitectura
 
-| Herramienta | Version minima | Instalacion |
-|-------------|---------------|-------------|
-| Docker      | 24+           | https://docs.docker.com/get-docker/ |
-| Docker Compose | v2 (plugin) | incluido con Docker Desktop |
-| Node.js     | 22+           | https://nodejs.org/ |
-| npm         | 10+           | incluido con Node.js |
-
-> Si solo vas a levantar el proyecto con Docker no necesitas Node ni npm en tu maquina.
+- `gateway`: unico servicio HTTP publico
+- `auth`: microservicio NATS para registro, login y verificacion JWT
+- `user`: microservicio NATS para perfil de usuario
+- `game`: microservicio NATS base con `health`
+- `tournament`: microservicio NATS base con `health`
+- `database`: PostgreSQL compartida en esta primera fase
+- `nats-server`: broker interno entre servicios
 
 ## Variables de entorno
 
-Crea un archivo `.env` en la raiz del repo (junto al `docker-compose.yml`):
+Crea un archivo `.env` en la raiz del proyecto:
 
 ```env
 POSTGRES_USER=postgres
@@ -24,71 +23,71 @@ POSTGRES_DB=transcendence
 
 DATABASE_URL=postgresql://postgres:postgres@database:5432/transcendence
 
-JWT_SECRET=cambia_esto_por_algo_seguro
+JWT_SECRET=change_me
+JWT_EXPIRES_IN=7d
+
+NATS_SERVERS=nats://nats-server:4222
+GATEWAY_PORT=3000
+REQUEST_TIMEOUT_MS=5000
 ```
 
-> `database` en `DATABASE_URL` es el nombre del servicio en docker-compose, no `localhost`.
+`DATABASE_URL` sirve para comandos locales de Prisma. En Docker Compose cada servicio recibe su `DATABASE_URL` interna automaticamente.
 
-## Levantar el proyecto
+## Desarrollo
+
+Instalar dependencias:
+
+```bash
+npm install
+```
+
+Levantar todo con Docker:
 
 ```bash
 docker compose up --build
 ```
 
-Servicios disponibles:
+Servicios expuestos:
 
-| Servicio  | Puerto | Descripcion                  |
-|-----------|--------|------------------------------|
-| database  | 5432   | PostgreSQL                   |
-| gateway   | 3000   | Gateway (entrada principal)  |
-| auth      | 3001   | Registro y login             |
-| user      | 3002   | Perfil de usuario            |
+- `gateway`: `http://localhost:3000`
+- `postgres`: `localhost:5432`
+- `nats`: `localhost:4222`
 
-## Migraciones de base de datos
-
-Las migraciones se aplican automaticamente al arrancar si el schema no ha cambiado.
-Si modificas `prisma/schema.prisma`:
+## Scripts utiles
 
 ```bash
-# Generar y aplicar migracion
-npx prisma migrate dev --name nombre_del_cambio
-
-# Solo generar el cliente (sin migrar)
-npx prisma generate
+npm run build:all
+npm run start:dev:gateway
+npm run start:dev:auth
+npm run start:dev:user
+npm run start:dev:game
+npm run start:dev:tournament
+npm run test
+npm run test:e2e:gateway
 ```
 
-## Probar los endpoints
+## Endpoints HTTP del gateway
+
+- `POST /auth/register`
+- `POST /auth/login`
+- `GET /users/me`
+- `GET /health`
+
+## Contratos NATS
+
+- `auth.register`
+- `auth.login`
+- `auth.verify`
+- `auth.health.check`
+- `user.me`
+- `user.health.check`
+- `game.health.check`
+- `tournament.health.check`
+
+## Pruebas manuales
+
+Con el stack levantado:
 
 ```bash
 chmod +x test.sh && ./test.sh
-```
-
-El script prueba:
-- `POST /auth/register` — crear usuario
-- `POST /auth/login` — obtener JWT
-- `GET /users/me` — perfil protegido con token
-- Login con contraseña incorrecta (debe fallar)
-- Acceso sin token (debe fallar)
-
-## Estructura
-
-```
-apps/
-  gateway/     Puerto 3000 — enrutamiento (pendiente NATS)
-  auth/        Puerto 3001 — registro, login, JWT
-  user/        Puerto 3002 — perfil de usuario
-  game/        (pendiente) — logica del Pong
-  tournament/  (pendiente) — brackets y torneos
-prisma/
-  schema.prisma
-prisma.config.ts
-docker-compose.yml
-test.sh
-```
-
-## Parar el proyecto
-
-```bash
-docker compose down          # para y elimina contenedores
-docker compose down -v       # tambien elimina el volumen de PostgreSQL (borra todos los datos)
 ```

@@ -10,4 +10,4 @@ RUN npm install
 
 COPY . .
 
-CMD ["npx", "nest", "start", "auth"]
+CMD ["npx", "nest", "start", "tournament"]

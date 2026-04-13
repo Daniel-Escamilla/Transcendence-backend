@@ -7,8 +7,7 @@ YELLOW='\033[1;33m'
 GRAY='\033[0;90m'
 NC='\033[0m'
 
-BASE_AUTH="http://localhost:3001"
-BASE_USER="http://localhost:3002"
+BASE_GATEWAY="http://localhost:3000"
 EMAIL="test_$(date +%s)@test.com"
 PASSWORD="1234"
 USERNAME="testuser"
@@ -44,34 +43,38 @@ check_fail() {
 
 # ── HAPPY PATH ────────────────────────────────────────────
 
-print_section "REGISTER  →  POST /auth/register"
-REGISTER=$(curl -s -X POST $BASE_AUTH/auth/register \
+print_section "HEALTH  →  GET /health"
+HEALTH=$(curl -s $BASE_GATEWAY/health)
+check "$HEALTH" "status"
+
+print_section "REGISTER  →  POST /auth/register (gateway)"
+REGISTER=$(curl -s -X POST $BASE_GATEWAY/auth/register \
   -H "Content-Type: application/json" \
   -d "{\"username\":\"$USERNAME\",\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
 check "$REGISTER"
 
-print_section "LOGIN  →  POST /auth/login"
-LOGIN=$(curl -s -X POST $BASE_AUTH/auth/login \
+print_section "LOGIN  →  POST /auth/login (gateway)"
+LOGIN=$(curl -s -X POST $BASE_GATEWAY/auth/login \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
-check "$LOGIN" "accesstoken"
-TOKEN=$(echo $LOGIN | grep -o '"accesstoken":"[^"]*"' | cut -d'"' -f4)
+check "$LOGIN" "accessToken"
+TOKEN=$(echo $LOGIN | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4)
 
-print_section "PROFILE  →  GET /users/me"
-ME=$(curl -s $BASE_USER/users/me \
+print_section "PROFILE  →  GET /users/me (gateway)"
+ME=$(curl -s $BASE_GATEWAY/users/me \
   -H "Authorization: Bearer $TOKEN")
 check "$ME"
 
 # ── ERROR CASES ───────────────────────────────────────────
 
 print_section "LOGIN con contraseña incorrecta  →  debe fallar"
-BAD_LOGIN=$(curl -s -X POST $BASE_AUTH/auth/login \
+BAD_LOGIN=$(curl -s -X POST $BASE_GATEWAY/auth/login \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"$EMAIL\",\"password\":\"wrongpassword\"}")
 check_fail "$BAD_LOGIN"
 
 print_section "PROFILE sin token  →  debe fallar"
-NO_TOKEN=$(curl -s $BASE_USER/users/me)
+NO_TOKEN=$(curl -s $BASE_GATEWAY/users/me)
 check_fail "$NO_TOKEN"
 
 echo ""
